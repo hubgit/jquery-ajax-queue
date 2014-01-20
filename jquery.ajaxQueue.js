@@ -29,6 +29,7 @@
         this.tries = 1;
         this.params = params;
         this.priority = false;
+        this.delay = { rate: 10000, server: 5000 };
         this.deferred = $.Deferred();
     };
 
@@ -37,8 +38,14 @@
         current: null,
         stopped: false,
 
-        stop: function() {
+        stop: function(delay) {
             this.stopped = true;
+
+            if (delay) {
+                window.setTimeout(function() {
+                    queue.start();
+                }, delay);
+            }
         },
 
         start: function()  {
@@ -71,34 +78,25 @@
 
                 switch (jqXHR.status) {
                     case 403: // rate-limited
-                        queue.stop();
-
-                        window.setTimeout(function() {
-                            queue.start();
-                        }, 10000);
-
+                        queue.stop(item.delay.rate);
                         queue.items.unshift(item); // add this item back to the queue
-                        item.deferred.notify('rate limited, retrying in 10 seconds…');
+                        item.deferred.notify(jqXHR, textStatus, item);
                         break;
 
                     case 500: // server error
                     case 503: // unknown error
-                        queue.stop();
-
-                        window.setTimeout(function() {
-                            queue.start();
-                        }, 5000);
+                        queue.stop(item.delay.server);
 
                         if (--item.tries) {
                             queue.items.unshift(item); // add this item back to the queue
-                            item.deferred.notify('server error, retrying in 5 seconds…');
+                            item.deferred.notify(jqXHR, textStatus, item);
                         } else {
-                            item.deferred.reject('error');
+                            item.deferred.reject(jqXHR, textStatus, errorThrown);
                         }
                         break;
 
                     default:
-                        item.deferred.reject('error');
+                        item.deferred.reject(jqXHR, textStatus, errorThrown);
                         queue.next();
                         break;
                 }
