@@ -4,8 +4,11 @@
 
 ## Usage
 
-    $.ajaxQueue(params, priority);
+    $.ajaxQueue(params, options);
     
-`params`: parameters object; passed through to [jQuery.ajax](http://api.jquery.com/jquery.ajax/)
+`params`: parameters object, passed through to [jQuery.ajax](http://api.jquery.com/jquery.ajax/)
 
-`priority`: boolean (true = appended to the front of the queue)
+`options`: options object, for the queued item
+
+* `priority: true`: insert at the front of the queue
+* `tries: 3`: retry the request 3 times if it fails due to server error
