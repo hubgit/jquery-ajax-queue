@@ -72,20 +72,26 @@
                 switch (jqXHR.status) {
                     case 403: // rate-limited
                         queue.stop();
-                        window.setTimeout(queue.start, 10000);
+
+                        window.setTimeout(function() {
+                            queue.start();
+                        }, 10000);
 
                         queue.items.unshift(item); // add this item back to the queue
-                        item.deferred.notify('rate limited');
+                        item.deferred.notify('rate limited, retrying in 10 seconds…');
                         break;
 
                     case 500: // server error
                     case 503: // unknown error
                         queue.stop();
-                        window.setTimeout(queue.start, 10000);
+
+                        window.setTimeout(function() {
+                            queue.start();
+                        }, 5000);
 
                         if (--item.tries) {
                             queue.items.unshift(item); // add this item back to the queue
-                            item.deferred.notify('retrying');
+                            item.deferred.notify('server error, retrying in 5 seconds…');
                         } else {
                             item.deferred.reject('error');
                         }
