@@ -20,8 +20,6 @@
             queue.items.push(item);
         }
 
-        console.log(item.tries);
-
         queue.next();
 
         return item.deferred.promise();
