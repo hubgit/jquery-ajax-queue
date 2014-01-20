@@ -10,5 +10,5 @@
 
 `options`: options object, for the queued item
 
-* `priority: true`: insert at the front of the queue
-* `tries: 3`: retry the request 3 times if it fails due to server error
+* `priority: boolean`: true = insert at the front of the queue
+* `tries: integer`: retry the request n times if it fails due to server error
