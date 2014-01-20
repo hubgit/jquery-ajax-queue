@@ -9,14 +9,18 @@
  * Date: 2014-01-19
  */
 (function($) {
-    $.ajaxQueue = function(params, priority) {
+    $.ajaxQueue = function(params, options) {
         var item = new Item(params);
 
-        if (priority) {
+        $.extend(item, options);
+
+        if (item.priority) {
             queue.items.unshift(item);
         } else {
             queue.items.push(item);
         }
+
+        console.log(item.tries);
 
         queue.next();
 
@@ -24,8 +28,9 @@
     };
 
     var Item = function(params) {
-        this.tries = 0;
+        this.tries = 1;
         this.params = params;
+        this.priority = false;
         this.deferred = $.Deferred();
     };
 
@@ -80,7 +85,7 @@
                         queue.stop();
                         window.setTimeout(queue.start, 10000);
 
-                        if (item.tries++ < 3) {
+                        if (--item.tries) {
                             queue.items.unshift(item); // add this item back to the queue
                             item.deferred.notify('retrying');
                         } else {
