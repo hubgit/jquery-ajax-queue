@@ -10,7 +10,13 @@
  */
 (function($) {
     $.ajaxQueue = function(params, options) {
-        var item = new Item(params);
+        var item = {
+            params: params,
+            tries: 1,
+            priority: false,
+            delay: { rate: 10000, server: 5000 },
+            deferred: $.Deferred()
+        };
 
         $.extend(item, options);
 
@@ -23,14 +29,6 @@
         queue.next();
 
         return item.deferred.promise();
-    };
-
-    var Item = function(params) {
-        this.tries = 1;
-        this.params = params;
-        this.priority = false;
-        this.delay = { rate: 10000, server: 5000 };
-        this.deferred = $.Deferred();
     };
 
     var queue = {
