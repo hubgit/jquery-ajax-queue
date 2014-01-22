@@ -1,12 +1,12 @@
 /*
- * jQuery Ajax Queue v0.1
+ * jQuery Ajax Queue v0.2
  * https://github.com/hubgit/jquery-ajax-queue
  *
  * Copyright 2014 Alf Eaton
  * Released under the MIT license
  * http://git.macropus.org/mit-license/
  *
- * Date: 2014-01-19
+ * Date: 2014-01-22
  */
 (function($) {
     $.ajaxQueue = function(params, options) {
