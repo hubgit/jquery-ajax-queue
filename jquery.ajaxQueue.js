@@ -10,37 +10,27 @@
  */
 (function($) {
     $.ajaxQueue = function(params, options) {
-        var adding;
-        var promises = [];
+        var item = $.extend(new QueueItem(params), options);
 
-        if ($.isArray(params)) {
-            adding = $.map(params, function() {
-                var item = new QueueItem(params);
-                promises.push(item.deferred.promise());
-
-                return $.extend(item, options);
-            });
+        if (item.priority) {
+            queue.items.unshift(item);
         } else {
-            var item = new QueueItem(params);
-            promises.push(item.deferred.promise());
-
-            adding = $.extend(item, options);
-        }
-
-        if (options.priority) {
-            queue.items.unshift(adding);
-        } else {
-            queue.items.push(adding);
+            queue.items.push(item);
         }
 
         queue.next();
 
-        return $(promises);
+        return item.deferred.promise();
+    };
+
+    $.ajaxQueue.concurrent = function(concurrent) {
+        queue.concurrent = concurrent;
     };
 
     var QueueItem = function(params) {
         this.params = params;
         this.tries = 1;
+        this.priority = false;
         this.delay = { rate: 10000, server: 5000 };
         this.deferred = $.Deferred();
     };
@@ -50,13 +40,13 @@
         var request = $.ajax(item.params);
 
         request.done(function(data, textStatus, jqXHR) {
-            queue.progress = null;
+            queue.currentCount--;
             item.deferred.resolve(data, textStatus, jqXHR);
             queue.next();
         });
 
         request.fail(function(jqXHR, textStatus, errorThrown) {
-            queue.progress = null;
+            queue.currentCount--;
 
             switch (jqXHR.status) {
                 case 403: // rate-limited
@@ -87,8 +77,8 @@
 
     var queue = {
         items: [],
-        chunks: 1,
-        progress: 0,
+        concurrent: 1,
+        currentCount: 0,
         stopped: false,
 
         stop: function(delay) {
@@ -108,25 +98,17 @@
 
         clear: function(){
             this.items = [];
-            this.progress = null;
+            this.currentCount = 0;
         },
 
         next: function() {
-            if (this.stopped || this.progress || !this.items.length) {
+            if (this.stopped) {
                 return;
             }
 
-            var item = this.items.shift();
-
-            if ($.isArray(item)) {
-                this.progress = item.length;
-
-                $.each(item, function() {
-                    this.run();
-                });
-            } else {
-               this.progress = 1;
-               item.run();
+            while (this.items.length && this.currentCount < this.concurrent) {
+                this.currentCount++;
+                this.items.shift().run();
             }
         }
     };
