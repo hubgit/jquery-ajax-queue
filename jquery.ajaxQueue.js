@@ -10,30 +10,85 @@
  */
 (function($) {
     $.ajaxQueue = function(params, options) {
-        var item = {
-            params: params,
-            tries: 1,
-            priority: false,
-            delay: { rate: 10000, server: 5000 },
-            deferred: $.Deferred()
-        };
+        var adding;
+        var promises = [];
 
-        $.extend(item, options);
+        if ($.isArray(params)) {
+            adding = $.map(params, function() {
+                var item = new QueueItem(params);
+                promises.push(item.deferred.promise());
 
-        if (item.priority) {
-            queue.items.unshift(item);
+                return $.extend(item, options);
+            });
         } else {
-            queue.items.push(item);
+            var item = new QueueItem(params);
+            promises.push(item.deferred.promise());
+
+            adding = $.extend(item, options);
+        }
+
+        if (options.priority) {
+            queue.items.unshift(adding);
+        } else {
+            queue.items.push(adding);
         }
 
         queue.next();
 
-        return item.deferred.promise();
+        return $(promises);
+    };
+
+    var QueueItem = function(params) {
+        this.params = params;
+        this.tries = 1;
+        this.delay = { rate: 10000, server: 5000 };
+        this.deferred = $.Deferred();
+    };
+
+    QueueItem.prototype.run = function() {
+        var item = this;
+        var request = $.ajax(item.params);
+
+        request.done(function(data, textStatus, jqXHR) {
+            queue.progress = null;
+            item.deferred.resolve(data, textStatus, jqXHR);
+            queue.next();
+        });
+
+        request.fail(function(jqXHR, textStatus, errorThrown) {
+            queue.progress = null;
+
+            switch (jqXHR.status) {
+                case 403: // rate-limited
+                    queue.stop(item.delay.rate);
+                    queue.items.unshift(item); // add this item back to the queue
+                    item.deferred.notify(jqXHR, textStatus, item);
+                    break;
+
+                case 500: // server error
+                case 503: // unknown error
+                    queue.stop(item.delay.server);
+
+                    if (--item.tries) {
+                        queue.items.unshift(item); // add this item back to the queue
+                        item.deferred.notify(jqXHR, textStatus, item);
+                    } else {
+                        item.deferred.reject(jqXHR, textStatus, errorThrown);
+                    }
+                    break;
+
+                default:
+                    item.deferred.reject(jqXHR, textStatus, errorThrown);
+                    queue.next();
+                    break;
+            }
+        });
     };
 
     var queue = {
         items: [],
-        current: null,
+        chunks: 1,
+        progress: 0,
         stopped: false,
 
         stop: function(delay) {
@@ -53,52 +108,26 @@
 
         clear: function(){
             this.items = [];
-            this.currentItem = null;
+            this.progress = null;
         },
 
         next: function() {
-            if (this.stopped || this.currentItem || !this.items.length) {
+            if (this.stopped || this.progress || !this.items.length) {
                 return;
             }
 
-            var item = this.currentItem = this.items.shift();
+            var item = this.items.shift();
 
-            var request = $.ajax(item.params);
+            if ($.isArray(item)) {
+                this.progress = item.length;
 
-            request.done(function(data, textStatus, jqXHR) {
-                queue.currentItem = null;
-                item.deferred.resolve(data, textStatus, jqXHR);
-                queue.next();
-            });
-
-            request.fail(function(jqXHR, textStatus, errorThrown) {
-                queue.currentItem = null;
-
-                switch (jqXHR.status) {
-                    case 403: // rate-limited
-                        queue.stop(item.delay.rate);
-                        queue.items.unshift(item); // add this item back to the queue
-                        item.deferred.notify(jqXHR, textStatus, item);
-                        break;
-
-                    case 500: // server error
-                    case 503: // unknown error
-                        queue.stop(item.delay.server);
-
-                        if (--item.tries) {
-                            queue.items.unshift(item); // add this item back to the queue
-                            item.deferred.notify(jqXHR, textStatus, item);
-                        } else {
-                            item.deferred.reject(jqXHR, textStatus, errorThrown);
-                        }
-                        break;
-
-                    default:
-                        item.deferred.reject(jqXHR, textStatus, errorThrown);
-                        queue.next();
-                        break;
-                }
-            });
+                $.each(item, function() {
+                    this.run();
+                });
+            } else {
+               this.progress = 1;
+               item.run();
+            }
         }
     };
 })(jQuery);
