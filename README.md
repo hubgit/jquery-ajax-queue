@@ -12,3 +12,7 @@
 
 * `priority: boolean`: true = insert at the front of the queue (default = false)
 * `tries: integer`: retry the request n times if it fails due to server error (default = 3)
+
+    $.ajaxQueue.concurrent(n);
+    
+`n`: how many requests to run concurrently (will cause responses to return out of sequence)
