@@ -31,6 +31,7 @@
         this.params = params;
         this.tries = 1;
         this.priority = false;
+        this.limit = 0;
         this.delay = { rate: 10000, server: 5000 };
         this.deferred = $.Deferred();
     };
@@ -45,7 +46,10 @@
         request.done(function(data, textStatus, jqXHR) {
             queue.currentCount--;
             item.deferred.resolve(data, textStatus, jqXHR);
-            queue.next();
+            
+            window.setTimeout(function() {
+                queue.next();
+            }, item.limit);
         });
 
         request.fail(function(jqXHR, textStatus, errorThrown) {
