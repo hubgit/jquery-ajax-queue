@@ -14,6 +14,7 @@
 
 * `priority: boolean`: true = insert at the front of the queue (default = false)
 * `tries: integer`: retry the request n times if it fails due to server error (default = 3)
+* `limit: integer`: delay, in milliseconds, after this request (default = 0)
 
 ### Set the number of concurrent requests
 
