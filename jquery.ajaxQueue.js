@@ -37,7 +37,10 @@
 
     QueueItem.prototype.run = function() {
         var item = this;
+        
         var request = $.ajax(item.params);
+
+        item.deferred.notify(request, 'start', item);
 
         request.done(function(data, textStatus, jqXHR) {
             queue.currentCount--;
@@ -52,7 +55,7 @@
                 case 403: // rate-limited
                     queue.stop(item.delay.rate);
                     queue.items.unshift(item); // add this item back to the queue
-                    item.deferred.notify(jqXHR, textStatus, item);
+                    item.deferred.notify(jqXHR, 'rate-limit', item);
                     break;
 
                 case 500: // server error
@@ -61,7 +64,7 @@
 
                     if (--item.tries) {
                         queue.items.unshift(item); // add this item back to the queue
-                        item.deferred.notify(jqXHR, textStatus, item);
+                        item.deferred.notify(jqXHR, 'retry', item);
                     } else {
                         item.deferred.reject(jqXHR, textStatus, errorThrown);
                     }
